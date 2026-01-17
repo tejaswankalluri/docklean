@@ -10,3 +10,6 @@ TEST_COVERAGE_SUMMARY.md
 # Development files
 node_modules/
 package-lock.json
+
+# GitHub workflows
+.github
