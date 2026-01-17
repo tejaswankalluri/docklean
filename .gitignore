@@ -1,0 +1,45 @@
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+pnpm-lock.yaml
+
+# Build outputs
+dist/
+build/
+coverage/
+
+# TypeScript
+*.tsbuildinfo
+
+# Editor/OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+
+# Temporary
+tmp/
+*.tmp
+
+# Ignore what .npmignore already excludes (source & tests)
+src/
+tests/
+
+# Keep local environment files
+.env
+.env.local
+.env.*.local
+
+# Lockfiles we don't want in git but may be present for npm packaging
+package-lock.json
+
+# Vitest/Vite
+.vitest/
+node_modules/
