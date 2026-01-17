@@ -28,8 +28,6 @@ tmp/
 *.tmp
 
 # Ignore what .npmignore already excludes (source & tests)
-src/
-tests/
 
 # Keep local environment files
 .env
