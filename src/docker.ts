@@ -89,7 +89,7 @@ export function buildPruneArgs(
       }
       break;
     case "volumes":
-      args.push("volume", "prune", "-f");
+      args.push("volume", "prune", "-f", "-a");
       break;
     case "networks":
       args.push("network", "prune", "-f");
@@ -147,7 +147,7 @@ export async function dockerPrune(
       }
       break;
     case "volumes":
-      baseArgs.push("volume", "prune", "-f");
+      baseArgs.push("volume", "prune", "-f", "-a");
       break;
     case "networks":
       baseArgs.push("network", "prune", "-f");
