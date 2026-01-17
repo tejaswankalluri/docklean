@@ -3,7 +3,6 @@ node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-package-lock.json
 pnpm-lock.yaml
 
 # Build outputs
@@ -38,7 +37,6 @@ tests/
 .env.*.local
 
 # Lockfiles we don't want in git but may be present for npm packaging
-package-lock.json
 
 # Vitest/Vite
 .vitest/
