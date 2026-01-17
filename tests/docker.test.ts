@@ -262,7 +262,7 @@ describe("buildPruneArgs", () => {
 
   it("builds prune args for volumes", () => {
     const args = buildPruneArgs("volumes");
-    expect(args).toEqual(["docker", "volume", "prune", "-f"]);
+    expect(args).toEqual(["docker", "volume", "prune", "-f", "-a"]);
   });
 
   it("builds prune args for networks", () => {
