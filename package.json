@@ -1,7 +1,17 @@
 {
   "name": "docklean",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "description": "Safely find and clean unused Docker resources",
+  "keywords": [
+    "docker",
+    "docker-cleanup",
+    "docker-prune",
+    "containers",
+    "devops",
+    "cli",
+    "cleanup",
+    "system-maintenance"
+  ],
   "license": "MIT",
   "main": "dist/index.js",
   "bin": {
