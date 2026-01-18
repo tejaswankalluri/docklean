@@ -97,7 +97,7 @@ docklean --images --older-than 30d --top 5
 - `--verbose` More verbose output
 - `--no-color` Disable colored output
 
-**Note:** `--limit-space` and `--top` cannot be used together.
+**Note:** `--limit-space` and `--top` cannot be used together, and they only apply to containers and images. Docker volumes and networks do not report size information, so they are not affected by these flags.
 
 ## Exit Codes
 
