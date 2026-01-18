@@ -56,9 +56,9 @@ function selectUntilSpaceLimit(items: ResourceItem[], limitBytes: number): Resou
   let totalBytes = 0;
   
   for (const item of items) {
-    if (totalBytes >= limitBytes) break;
     selected.push(item);
     totalBytes += parseDockerSize(item.size);
+    if (totalBytes >= limitBytes) break;
   }
   
   return selected;

@@ -905,8 +905,8 @@ describe("size filtering", () => {
         top: 1
       });
 
-      // Should filter for items older than 14 days first (old-large, recent-huge excluded)
-      // Then select top 1 from remaining
+      // Should filter for items NOT older than 14 days first (keeps recent-huge only)
+      // Then select top 1 from remaining (which is recent-huge)
       expect(result.summaries[0].items).toHaveLength(1);
       expect(result.summaries[0].items[0].name).toBe("recent-huge");
     });
