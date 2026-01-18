@@ -214,3 +214,27 @@ export function toExitCode(code?: number): ExitCode {
   if (!code || code === 0) return 0;
   return 4;
 }
+
+export async function dockerRemoveContainers(containerIds: string[]): Promise<string> {
+  if (containerIds.length === 0) return "";
+  const { stdout } = await execDocker(["container", "rm", "-f", ...containerIds]);
+  return stdout;
+}
+
+export async function dockerRemoveImages(imageIds: string[]): Promise<string> {
+  if (imageIds.length === 0) return "";
+  const { stdout } = await execDocker(["image", "rm", "-f", ...imageIds]);
+  return stdout;
+}
+
+export async function dockerRemoveVolumes(volumeNames: string[]): Promise<string> {
+  if (volumeNames.length === 0) return "";
+  const { stdout } = await execDocker(["volume", "rm", "-f", ...volumeNames]);
+  return stdout;
+}
+
+export async function dockerRemoveNetworks(networkIds: string[]): Promise<string> {
+  if (networkIds.length === 0) return "";
+  const { stdout } = await execDocker(["network", "rm", ...networkIds]);
+  return stdout;
+}

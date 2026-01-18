@@ -48,6 +48,13 @@ export interface CleanResult {
   reclaimedBytes: number;
 }
 
+export interface SelectedResources {
+  containers: string[];
+  images: string[];
+  volumes: string[];
+  networks: string[];
+}
+
 export interface DockerCheck {
   ok: boolean;
   code: ExitCode;

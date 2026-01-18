@@ -734,9 +734,8 @@ describe("size filtering", () => {
         }
       ]);
 
-      // Limit to 600 MB - should select large (500) + medium (300) = 800 MB
-      // but since we need to reach 600, it should select large (500) first, 
-      // then medium would exceed, so select medium anyway to reach the goal
+      // Limit to 600 MB - selects items in descending size order until limit is reached.
+      // Selects "large" (500 MB, total=500 MB), then "medium" (300 MB, total=800 MB >= limit), stops.
       const result = await scanResources({
         includeContainers: true,
         includeImages: false,
@@ -905,8 +904,8 @@ describe("size filtering", () => {
         top: 1
       });
 
-      // Should filter for items NOT older than 14 days first (keeps recent-huge only)
-      // Then select top 1 from remaining (which is recent-huge)
+      // Should filter to keep only items younger than 14 days (created within last 14 days)
+      // Then select the single largest item by size from the remaining items (recent-huge)
       expect(result.summaries[0].items).toHaveLength(1);
       expect(result.summaries[0].items[0].name).toBe("recent-huge");
     });

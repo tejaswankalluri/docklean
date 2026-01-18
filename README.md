@@ -99,6 +99,8 @@ docklean --images --older-than 30d --top 5
 
 **Note:** `--limit-space` and `--top` cannot be used together, and they only apply to containers and images. Docker volumes and networks do not report size information, so they are not affected by these flags.
 
+When using `--top` or `--limit-space` with multiple resource types (e.g., `--containers --images --top 10`), the filter applies independently to each resource type. For example, `--top 10` with both containers and images would select up to 10 containers AND up to 10 images (20 items total), not 10 items across all types.
+
 ## Exit Codes
 
 - `0` Success
