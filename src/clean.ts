@@ -70,19 +70,19 @@ export async function cleanResources(options: CleanOptions): Promise<CleanResult
             if (ids && ids.length > 0) {
               switch (type) {
                 case "containers":
-                  output = await dockerRemoveContainers(ids);
+                  await dockerRemoveContainers(ids);
                   removed[type] = ids.length;
                   break;
                 case "images":
-                  output = await dockerRemoveImages(ids);
+                  await dockerRemoveImages(ids);
                   removed[type] = ids.length;
                   break;
                 case "volumes":
-                  output = await dockerRemoveVolumes(ids);
+                  await dockerRemoveVolumes(ids);
                   removed[type] = ids.length;
                   break;
                 case "networks":
-                  output = await dockerRemoveNetworks(ids);
+                  await dockerRemoveNetworks(ids);
                   removed[type] = ids.length;
                   break;
               }

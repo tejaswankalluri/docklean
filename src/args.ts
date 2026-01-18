@@ -21,7 +21,7 @@ export function parseSizeString(sizeStr: string): number {
   
   const value = Number(match[1]);
   if (isNaN(value) || value < 0) {
-    throw new Error("Invalid size value");
+    throw new Error("Invalid size value: must be a non-negative number");
   }
   
   const unit = (match[2] || "B").toLowerCase();
