@@ -13,6 +13,8 @@ export interface CliOptions {
   force: boolean;
   dryRun: boolean;
   olderThan?: string;
+  limitSpace?: string;
+  top?: number;
   verbose: boolean;
   quiet: boolean;
   json: boolean;
@@ -44,6 +46,13 @@ export interface CleanResult {
   removed: Record<ResourceType, number>;
   failures: Record<ResourceType, string[]>;
   reclaimedBytes: number;
+}
+
+export interface SelectedResources {
+  containers: string[];
+  images: string[];
+  volumes: string[];
+  networks: string[];
 }
 
 export interface DockerCheck {

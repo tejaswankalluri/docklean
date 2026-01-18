@@ -45,7 +45,7 @@ function summarizeCounts(resources: ResourceType[], totalItems: number): string 
 }
 
 async function run(): Promise<number> {
-  const { options, olderThanMs } = parseArgs(process.argv);
+  const { options, olderThanMs, limitSpaceBytes } = parseArgs(process.argv);
   setColorEnabled(!options.noColor);
 
   const dockerCheck = await checkDocker();
@@ -64,7 +64,9 @@ async function run(): Promise<number> {
     includeNetworks: resources.includes("networks"),
     includeCache: resources.includes("cache"),
     includeAllImages,
-    olderThanMs
+    olderThanMs,
+    top: options.top,
+    limitSpaceBytes
   });
   scanSpinner?.succeed("Scan complete");
 
@@ -140,12 +142,45 @@ async function run(): Promise<number> {
     cache: 0
   } as Record<ResourceType, number>);
 
+  // Extract selected IDs when size filters are active
+  const hasSizeFilters = options.top !== undefined || limitSpaceBytes !== undefined;
+  let selectedIds = undefined;
+  let estimatedBytes = undefined;
+  
+  if (hasSizeFilters) {
+    selectedIds = scanResult.summaries.reduce((acc, summary) => {
+      // Only collect IDs for resource types that have them (not cache)
+      if (summary.type !== "cache") {
+        acc[summary.type] = summary.items.map(item => item.id);
+      }
+      return acc;
+    }, {
+      containers: [],
+      images: [],
+      volumes: [],
+      networks: []
+    } as import("./types").SelectedResources);
+
+    estimatedBytes = scanResult.summaries.reduce((acc, summary) => {
+      acc[summary.type] = summary.reclaimableBytes || 0;
+      return acc;
+    }, {
+      containers: 0,
+      images: 0,
+      volumes: 0,
+      networks: 0,
+      cache: 0
+    } as Record<ResourceType, number>);
+  }
+
   const cleanResult = await cleanResources({
     resources,
     olderThanMs,
     dryRun: options.dryRun,
     includeAllImages,
-    expectedCounts
+    expectedCounts,
+    selectedIds,
+    estimatedBytes
   });
   cleanSpinner?.succeed("Cleanup completed");
 
