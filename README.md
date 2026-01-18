@@ -59,6 +59,24 @@ Filter by age:
 docklean --images --older-than 7d
 ```
 
+Clean top 10 largest resources:
+
+```bash
+docklean --images --top 10
+```
+
+Clean until 5GB is reclaimed:
+
+```bash
+docklean --images --limit-space 5GB
+```
+
+Combine filters:
+
+```bash
+docklean --images --older-than 30d --top 5
+```
+
 ## Flags
 
 - `--containers` Clean stopped/exited containers
@@ -69,6 +87,8 @@ docklean --images --older-than 7d
 - `--dangling` Dangling images + stopped containers + unused volumes
 - `--all` All unused resources
 - `--older-than <duration>` Only clean items older than `m/h/d/w`
+- `--limit-space <size>` Clean until specified space is reclaimed (e.g., `5GB`, `500MB`)
+- `--top <number>` Select top N largest resources
 - `--dry-run` Print what would be removed
 - `--force` Skip confirmation prompt
 - `--yes` Alias for `--force`
@@ -76,6 +96,8 @@ docklean --images --older-than 7d
 - `--quiet` Minimal output
 - `--verbose` More verbose output
 - `--no-color` Disable colored output
+
+**Note:** `--limit-space` and `--top` cannot be used together.
 
 ## Exit Codes
 
