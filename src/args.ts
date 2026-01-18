@@ -5,11 +5,36 @@ import { CliOptions } from "./types";
 export interface ParsedArgs {
   options: CliOptions;
   olderThanMs?: number;
+  limitSpaceBytes?: number;
   selectedResources: Array<keyof Pick<CliOptions, "containers" | "images" | "volumes" | "networks" | "cache">>;
 }
 
 const resourceFlags = ["containers", "images", "volumes", "networks", "cache"] as const;
 const mutableResourceFlags = [...resourceFlags];
+
+export function parseSizeString(sizeStr: string): number {
+  const trimmed = sizeStr.trim();
+  const match = trimmed.match(/^([0-9.]+)\s*(B|KB|MB|GB|TB)?$/i);
+  if (!match) {
+    throw new Error("Invalid size format. Use formats like: 5GB, 500MB, 1.5GB");
+  }
+  
+  const value = Number(match[1]);
+  if (isNaN(value) || value < 0) {
+    throw new Error("Invalid size value");
+  }
+  
+  const unit = (match[2] || "B").toLowerCase();
+  const multipliers: Record<string, number> = {
+    b: 1,
+    kb: 1000,
+    mb: 1000 ** 2,
+    gb: 1000 ** 3,
+    tb: 1000 ** 4
+  };
+  
+  return Math.round(value * (multipliers[unit] ?? 1));
+}
 
 export function parseArgs(argv: string[]): ParsedArgs {
   const program = new Command();
@@ -25,6 +50,8 @@ export function parseArgs(argv: string[]): ParsedArgs {
     .option("--dangling", "Clean dangling images, stopped containers, unused volumes")
     .option("--all", "Clean all unused resources")
     .option("--older-than <duration>", "Only clean resources older than m/h/d/w")
+    .option("--limit-space <size>", "Clean until specified space is reclaimed (e.g., 5GB, 500MB)")
+    .option("--top <number>", "Select top N largest resources", parseInt)
     .option("-f, --force", "Skip confirmation prompt")
     .option("-y, --yes", "Alias for --force")
     .option("--dry-run", "Print what would be removed")
@@ -41,6 +68,10 @@ export function parseArgs(argv: string[]): ParsedArgs {
     throw new Error("Use either --quiet or --verbose, not both.");
   }
 
+  if (raw.limitSpace && raw.top) {
+    throw new Error("Use either --limit-space or --top, not both.");
+  }
+
   const options: CliOptions = {
     containers: Boolean(raw.containers),
     images: Boolean(raw.images),
@@ -52,6 +83,8 @@ export function parseArgs(argv: string[]): ParsedArgs {
     force: Boolean(raw.force || raw.yes),
     dryRun: Boolean(raw.dryRun),
     olderThan: raw.olderThan,
+    limitSpace: raw.limitSpace,
+    top: raw.top,
     verbose: Boolean(raw.verbose),
     quiet: Boolean(raw.quiet),
     json: Boolean(raw.json),
@@ -71,6 +104,26 @@ export function parseArgs(argv: string[]): ParsedArgs {
      throw new Error("Invalid --older-than value. Use m/h/d/w like 7d or 12h.");
    }
 
+  // Validate and parse limitSpace
+  let limitSpaceBytes: number | undefined = undefined;
+  if (options.limitSpace) {
+    try {
+      limitSpaceBytes = parseSizeString(options.limitSpace);
+      if (limitSpaceBytes <= 0) {
+        throw new Error("Size must be greater than 0");
+      }
+    } catch (error) {
+      throw new Error(`Invalid --limit-space value: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  // Validate top flag
+  if (options.top !== undefined) {
+    if (isNaN(options.top) || options.top <= 0 || !Number.isInteger(options.top)) {
+      throw new Error("Invalid --top value. Must be a positive integer.");
+    }
+  }
+
   let selectedFlags = mutableResourceFlags.filter((flag) => options[flag]);
   if (options.all) {
     selectedFlags = mutableResourceFlags;
@@ -79,6 +132,7 @@ export function parseArgs(argv: string[]): ParsedArgs {
   return {
     options,
     olderThanMs,
+    limitSpaceBytes,
     selectedResources: selectedFlags
   };
 }

@@ -13,6 +13,8 @@ export interface CliOptions {
   force: boolean;
   dryRun: boolean;
   olderThan?: string;
+  limitSpace?: string;
+  top?: number;
   verbose: boolean;
   quiet: boolean;
   json: boolean;

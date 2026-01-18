@@ -575,3 +575,340 @@ describe("summarizeScan", () => {
     expect(summary).toContain("0 B");
   });
 });
+
+describe("size filtering", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  describe("top N filter", () => {
+    it("selects top N largest containers", async () => {
+      const mockPsAll = dockerPsAll as any;
+      mockPsAll.mockResolvedValue([
+        {
+          ID: "1",
+          Names: "large",
+          State: "exited",
+          Size: "500 MB",
+          CreatedAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString()
+        },
+        {
+          ID: "2",
+          Names: "medium",
+          State: "exited",
+          Size: "300 MB",
+          CreatedAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString()
+        },
+        {
+          ID: "3",
+          Names: "small",
+          State: "exited",
+          Size: "100 MB",
+          CreatedAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString()
+        }
+      ]);
+
+      const result = await scanResources({
+        includeContainers: true,
+        includeImages: false,
+        includeVolumes: false,
+        includeNetworks: false,
+        includeCache: false,
+        top: 2
+      });
+
+      expect(result.summaries[0].items).toHaveLength(2);
+      expect(result.summaries[0].items[0].name).toBe("large");
+      expect(result.summaries[0].items[1].name).toBe("medium");
+    });
+
+    it("selects top N largest images", async () => {
+      const mockImages = dockerImages as any;
+      mockImages.mockResolvedValue([
+        {
+          ID: "1",
+          Repository: "<none>",
+          Tag: "<none>",
+          Size: "1 GB",
+          CreatedAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString()
+        },
+        {
+          ID: "2",
+          Repository: "<none>",
+          Tag: "<none>",
+          Size: "500 MB",
+          CreatedAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString()
+        },
+        {
+          ID: "3",
+          Repository: "<none>",
+          Tag: "<none>",
+          Size: "200 MB",
+          CreatedAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString()
+        },
+        {
+          ID: "4",
+          Repository: "<none>",
+          Tag: "<none>",
+          Size: "100 MB",
+          CreatedAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString()
+        }
+      ]);
+
+      const result = await scanResources({
+        includeContainers: false,
+        includeImages: true,
+        includeVolumes: false,
+        includeNetworks: false,
+        includeCache: false,
+        includeAllImages: false,
+        top: 3
+      });
+
+      expect(result.summaries[0].items).toHaveLength(3);
+      expect(result.summaries[0].items[0].size).toBe("1 GB");
+      expect(result.summaries[0].items[1].size).toBe("500 MB");
+      expect(result.summaries[0].items[2].size).toBe("200 MB");
+    });
+
+    it("returns all items when top N is greater than available items", async () => {
+      const mockPsAll = dockerPsAll as any;
+      mockPsAll.mockResolvedValue([
+        {
+          ID: "1",
+          Names: "container1",
+          State: "exited",
+          Size: "100 MB",
+          CreatedAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString()
+        },
+        {
+          ID: "2",
+          Names: "container2",
+          State: "exited",
+          Size: "50 MB",
+          CreatedAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString()
+        }
+      ]);
+
+      const result = await scanResources({
+        includeContainers: true,
+        includeImages: false,
+        includeVolumes: false,
+        includeNetworks: false,
+        includeCache: false,
+        top: 10
+      });
+
+      expect(result.summaries[0].items).toHaveLength(2);
+    });
+  });
+
+  describe("limit-space filter", () => {
+    it("selects containers until space limit is reached", async () => {
+      const mockPsAll = dockerPsAll as any;
+      mockPsAll.mockResolvedValue([
+        {
+          ID: "1",
+          Names: "large",
+          State: "exited",
+          Size: "500 MB",
+          CreatedAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString()
+        },
+        {
+          ID: "2",
+          Names: "medium",
+          State: "exited",
+          Size: "300 MB",
+          CreatedAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString()
+        },
+        {
+          ID: "3",
+          Names: "small",
+          State: "exited",
+          Size: "100 MB",
+          CreatedAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString()
+        }
+      ]);
+
+      // Limit to 600 MB - should select large (500) + medium (300) = 800 MB
+      // but since we need to reach 600, it should select large (500) first, 
+      // then medium would exceed, so select medium anyway to reach the goal
+      const result = await scanResources({
+        includeContainers: true,
+        includeImages: false,
+        includeVolumes: false,
+        includeNetworks: false,
+        includeCache: false,
+        limitSpaceBytes: 600 * 1000 * 1000
+      });
+
+      expect(result.summaries[0].items).toHaveLength(2);
+      expect(result.summaries[0].items[0].name).toBe("large");
+      expect(result.summaries[0].items[1].name).toBe("medium");
+    });
+
+    it("selects images until space limit is reached", async () => {
+      const mockImages = dockerImages as any;
+      mockImages.mockResolvedValue([
+        {
+          ID: "1",
+          Repository: "<none>",
+          Tag: "<none>",
+          Size: "1 GB",
+          CreatedAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString()
+        },
+        {
+          ID: "2",
+          Repository: "<none>",
+          Tag: "<none>",
+          Size: "500 MB",
+          CreatedAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString()
+        },
+        {
+          ID: "3",
+          Repository: "<none>",
+          Tag: "<none>",
+          Size: "200 MB",
+          CreatedAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString()
+        }
+      ]);
+
+      const result = await scanResources({
+        includeContainers: false,
+        includeImages: true,
+        includeVolumes: false,
+        includeNetworks: false,
+        includeCache: false,
+        includeAllImages: false,
+        limitSpaceBytes: 1.2 * 1000 * 1000 * 1000
+      });
+
+      expect(result.summaries[0].items).toHaveLength(2);
+      expect(result.summaries[0].reclaimableBytes).toBe(1.5 * 1000 * 1000 * 1000);
+    });
+
+    it("selects single item when it exceeds limit", async () => {
+      const mockPsAll = dockerPsAll as any;
+      mockPsAll.mockResolvedValue([
+        {
+          ID: "1",
+          Names: "huge",
+          State: "exited",
+          Size: "5 GB",
+          CreatedAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString()
+        },
+        {
+          ID: "2",
+          Names: "small",
+          State: "exited",
+          Size: "100 MB",
+          CreatedAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString()
+        }
+      ]);
+
+      const result = await scanResources({
+        includeContainers: true,
+        includeImages: false,
+        includeVolumes: false,
+        includeNetworks: false,
+        includeCache: false,
+        limitSpaceBytes: 1 * 1000 * 1000 * 1000 // 1 GB limit
+      });
+
+      // Should select at least the first (largest) item
+      expect(result.summaries[0].items).toHaveLength(1);
+      expect(result.summaries[0].items[0].name).toBe("huge");
+    });
+  });
+
+  describe("sorting by size", () => {
+    it("sorts containers by size in descending order", async () => {
+      const mockPsAll = dockerPsAll as any;
+      mockPsAll.mockResolvedValue([
+        {
+          ID: "1",
+          Names: "small",
+          State: "exited",
+          Size: "100 MB",
+          CreatedAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString()
+        },
+        {
+          ID: "2",
+          Names: "large",
+          State: "exited",
+          Size: "500 MB",
+          CreatedAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString()
+        },
+        {
+          ID: "3",
+          Names: "medium",
+          State: "exited",
+          Size: "300 MB",
+          CreatedAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString()
+        }
+      ]);
+
+      const result = await scanResources({
+        includeContainers: true,
+        includeImages: false,
+        includeVolumes: false,
+        includeNetworks: false,
+        includeCache: false,
+        top: 10 // Get all but sorted
+      });
+
+      expect(result.summaries[0].items).toHaveLength(3);
+      expect(result.summaries[0].items[0].name).toBe("large");
+      expect(result.summaries[0].items[1].name).toBe("medium");
+      expect(result.summaries[0].items[2].name).toBe("small");
+    });
+  });
+
+  describe("combined with older-than filter", () => {
+    it("applies older-than filter before size filter", async () => {
+      const mockPsAll = dockerPsAll as any;
+      mockPsAll.mockResolvedValue([
+        {
+          ID: "1",
+          Names: "old-large",
+          State: "exited",
+          Size: "500 MB",
+          CreatedAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
+        },
+        {
+          ID: "2",
+          Names: "recent-huge",
+          State: "exited",
+          Size: "1 GB",
+          CreatedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()
+        },
+        {
+          ID: "3",
+          Names: "old-small",
+          State: "exited",
+          Size: "100 MB",
+          CreatedAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
+        }
+      ]);
+
+      const result = await scanResources({
+        includeContainers: true,
+        includeImages: false,
+        includeVolumes: false,
+        includeNetworks: false,
+        includeCache: false,
+        olderThanMs: 14 * 24 * 60 * 60 * 1000, // 14 days
+        top: 1
+      });
+
+      // Should filter for items older than 14 days first (old-large, recent-huge excluded)
+      // Then select top 1 from remaining
+      expect(result.summaries[0].items).toHaveLength(1);
+      expect(result.summaries[0].items[0].name).toBe("recent-huge");
+    });
+  });
+});

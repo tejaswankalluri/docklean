@@ -20,6 +20,8 @@ interface ScanOptions {
   includeCache: boolean;
   olderThanMs?: number;
   includeAllImages?: boolean;
+  top?: number;
+  limitSpaceBytes?: number;
 }
 
 function parseCreatedAt(raw?: string): string | undefined {
@@ -36,6 +38,56 @@ function applyOlderThan(items: ResourceItem[], olderThanMs?: number): ResourceIt
      return Number.isNaN(created) ? false : created >= cutoff;
    });
  }
+
+function sortBySize(items: ResourceItem[]): ResourceItem[] {
+  return [...items].sort((a, b) => {
+    const sizeA = parseDockerSize(a.size);
+    const sizeB = parseDockerSize(b.size);
+    return sizeB - sizeA; // Descending order (largest first)
+  });
+}
+
+function selectTopN(items: ResourceItem[], n: number): ResourceItem[] {
+  return items.slice(0, n);
+}
+
+function selectUntilSpaceLimit(items: ResourceItem[], limitBytes: number): ResourceItem[] {
+  const selected: ResourceItem[] = [];
+  let totalBytes = 0;
+  
+  for (const item of items) {
+    if (totalBytes >= limitBytes) break;
+    selected.push(item);
+    totalBytes += parseDockerSize(item.size);
+  }
+  
+  return selected;
+}
+
+export function applySizeFilters(
+  items: ResourceItem[],
+  top?: number,
+  limitSpaceBytes?: number
+): ResourceItem[] {
+  if (!top && !limitSpaceBytes) {
+    return items;
+  }
+  
+  // Sort items by size (largest first)
+  const sorted = sortBySize(items);
+  
+  // Apply top N filter
+  if (top !== undefined) {
+    return selectTopN(sorted, top);
+  }
+  
+  // Apply space limit filter
+  if (limitSpaceBytes !== undefined) {
+    return selectUntilSpaceLimit(sorted, limitSpaceBytes);
+  }
+  
+  return sorted;
+}
 
 export async function scanResources(options: ScanOptions): Promise<ScanResult> {
   const summaries: ResourceSummary[] = [];
@@ -56,7 +108,8 @@ export async function scanResources(options: ScanOptions): Promise<ScanResult> {
         raw: container
       }));
 
-    const filtered = applyOlderThan(containers, options.olderThanMs);
+    let filtered = applyOlderThan(containers, options.olderThanMs);
+    filtered = applySizeFilters(filtered, options.top, options.limitSpaceBytes);
     const reclaimableBytes = filtered.reduce((sum, item) => sum + parseDockerSize(item.size), 0);
 
     summaries.push({
@@ -84,7 +137,8 @@ export async function scanResources(options: ScanOptions): Promise<ScanResult> {
         raw: image
       }));
 
-    const filtered = applyOlderThan(images, options.olderThanMs);
+    let filtered = applyOlderThan(images, options.olderThanMs);
+    filtered = applySizeFilters(filtered, options.top, options.limitSpaceBytes);
     const reclaimableBytes = filtered.reduce((sum, item) => sum + parseDockerSize(item.size), 0);
 
     summaries.push({

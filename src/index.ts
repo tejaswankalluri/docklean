@@ -45,7 +45,7 @@ function summarizeCounts(resources: ResourceType[], totalItems: number): string 
 }
 
 async function run(): Promise<number> {
-  const { options, olderThanMs } = parseArgs(process.argv);
+  const { options, olderThanMs, limitSpaceBytes } = parseArgs(process.argv);
   setColorEnabled(!options.noColor);
 
   const dockerCheck = await checkDocker();
@@ -64,7 +64,9 @@ async function run(): Promise<number> {
     includeNetworks: resources.includes("networks"),
     includeCache: resources.includes("cache"),
     includeAllImages,
-    olderThanMs
+    olderThanMs,
+    top: options.top,
+    limitSpaceBytes
   });
   scanSpinner?.succeed("Scan complete");
 

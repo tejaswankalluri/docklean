@@ -1,7 +1,56 @@
 import { describe, expect, it } from "vitest";
-import { parseArgs } from "../src/args";
+import { parseArgs, parseSizeString } from "../src/args";
 
 const baseArgv = ["node", "docklean"];
+
+describe("parseSizeString", () => {
+  it("parses bytes correctly", () => {
+    expect(parseSizeString("1024B")).toBe(1024);
+    expect(parseSizeString("1024 B")).toBe(1024);
+  });
+
+  it("parses kilobytes correctly", () => {
+    expect(parseSizeString("5KB")).toBe(5000);
+    expect(parseSizeString("5 KB")).toBe(5000);
+  });
+
+  it("parses megabytes correctly", () => {
+    expect(parseSizeString("100MB")).toBe(100 * 1000 * 1000);
+    expect(parseSizeString("100 MB")).toBe(100 * 1000 * 1000);
+  });
+
+  it("parses gigabytes correctly", () => {
+    expect(parseSizeString("5GB")).toBe(5 * 1000 * 1000 * 1000);
+    expect(parseSizeString("5 GB")).toBe(5 * 1000 * 1000 * 1000);
+  });
+
+  it("parses terabytes correctly", () => {
+    expect(parseSizeString("2TB")).toBe(2 * 1000 * 1000 * 1000 * 1000);
+  });
+
+  it("parses decimal values", () => {
+    expect(parseSizeString("1.5GB")).toBe(Math.round(1.5 * 1000 * 1000 * 1000));
+  });
+
+  it("defaults to bytes when no unit specified", () => {
+    expect(parseSizeString("1024")).toBe(1024);
+  });
+
+  it("is case insensitive for units", () => {
+    expect(parseSizeString("5gb")).toBe(5 * 1000 * 1000 * 1000);
+    expect(parseSizeString("5Gb")).toBe(5 * 1000 * 1000 * 1000);
+    expect(parseSizeString("5gB")).toBe(5 * 1000 * 1000 * 1000);
+  });
+
+  it("throws error for invalid format", () => {
+    expect(() => parseSizeString("invalid")).toThrowError(/Invalid size format/);
+    expect(() => parseSizeString("abc GB")).toThrowError(/Invalid size format/);
+  });
+
+  it("throws error for negative values", () => {
+    expect(() => parseSizeString("-5GB")).toThrowError(/Invalid size format/);
+  });
+});
 
 describe("parseArgs", () => {
   it("defaults to no flags", () => {
@@ -236,6 +285,120 @@ describe("parseArgs", () => {
       const result1 = parseArgs([...baseArgv, "--dry-run", "--all"]);
       const result2 = parseArgs([...baseArgv, "--all"]);
       expect(result1.selectedResources).toEqual(result2.selectedResources);
+    });
+  });
+
+  describe("limit-space flag", () => {
+    it("parses --limit-space with GB", () => {
+      const { options, limitSpaceBytes } = parseArgs([...baseArgv, "--limit-space", "5GB"]);
+      expect(options.limitSpace).toBe("5GB");
+      expect(limitSpaceBytes).toBe(5 * 1000 * 1000 * 1000);
+    });
+
+    it("parses --limit-space with MB", () => {
+      const { limitSpaceBytes } = parseArgs([...baseArgv, "--limit-space", "500MB"]);
+      expect(limitSpaceBytes).toBe(500 * 1000 * 1000);
+    });
+
+    it("parses --limit-space with decimal values", () => {
+      const { limitSpaceBytes } = parseArgs([...baseArgv, "--limit-space", "1.5GB"]);
+      expect(limitSpaceBytes).toBe(Math.round(1.5 * 1000 * 1000 * 1000));
+    });
+
+    it("parses --limit-space with KB", () => {
+      const { limitSpaceBytes } = parseArgs([...baseArgv, "--limit-space", "100KB"]);
+      expect(limitSpaceBytes).toBe(100 * 1000);
+    });
+
+    it("parses --limit-space with TB", () => {
+      const { limitSpaceBytes } = parseArgs([...baseArgv, "--limit-space", "2TB"]);
+      expect(limitSpaceBytes).toBe(2 * 1000 * 1000 * 1000 * 1000);
+    });
+
+    it("parses --limit-space with bytes", () => {
+      const { limitSpaceBytes } = parseArgs([...baseArgv, "--limit-space", "1024B"]);
+      expect(limitSpaceBytes).toBe(1024);
+    });
+
+    it("parses --limit-space with spaces", () => {
+      const { limitSpaceBytes } = parseArgs([...baseArgv, "--limit-space", "5 GB"]);
+      expect(limitSpaceBytes).toBe(5 * 1000 * 1000 * 1000);
+    });
+
+    it("rejects invalid --limit-space format", () => {
+      expect(() => parseArgs([...baseArgv, "--limit-space", "invalid"]))
+        .toThrowError(/Invalid --limit-space value/);
+    });
+
+    it("rejects negative --limit-space value", () => {
+      expect(() => parseArgs([...baseArgv, "--limit-space", "-5GB"]))
+        .toThrowError(/Invalid --limit-space value/);
+    });
+
+    it("rejects zero --limit-space value", () => {
+      expect(() => parseArgs([...baseArgv, "--limit-space", "0GB"]))
+        .toThrowError(/Invalid --limit-space value/);
+    });
+
+    it("can combine --limit-space with other flags", () => {
+      const { options, limitSpaceBytes } = parseArgs([
+        ...baseArgv,
+        "--limit-space",
+        "5GB",
+        "--images",
+        "--containers"
+      ]);
+      expect(limitSpaceBytes).toBe(5 * 1000 * 1000 * 1000);
+      expect(options.images).toBe(true);
+      expect(options.containers).toBe(true);
+    });
+  });
+
+  describe("top flag", () => {
+    it("parses --top flag", () => {
+      const { options } = parseArgs([...baseArgv, "--top", "10"]);
+      expect(options.top).toBe(10);
+    });
+
+    it("parses --top with large number", () => {
+      const { options } = parseArgs([...baseArgv, "--top", "1000"]);
+      expect(options.top).toBe(1000);
+    });
+
+    it("rejects negative --top value", () => {
+      expect(() => parseArgs([...baseArgv, "--top", "-5"]))
+        .toThrowError(/Invalid --top value/);
+    });
+
+    it("rejects zero --top value", () => {
+      expect(() => parseArgs([...baseArgv, "--top", "0"]))
+        .toThrowError(/Invalid --top value/);
+    });
+
+    it("rejects non-numeric --top value", () => {
+      expect(() => parseArgs([...baseArgv, "--top", "abc"]))
+        .toThrowError(/Invalid --top value/);
+    });
+
+    it("can combine --top with other flags", () => {
+      const { options } = parseArgs([
+        ...baseArgv,
+        "--top",
+        "5",
+        "--images",
+        "--dry-run"
+      ]);
+      expect(options.top).toBe(5);
+      expect(options.images).toBe(true);
+      expect(options.dryRun).toBe(true);
+    });
+  });
+
+  describe("--limit-space and --top mutual exclusivity", () => {
+    it("rejects using both --limit-space and --top together", () => {
+      expect(() =>
+        parseArgs([...baseArgv, "--limit-space", "5GB", "--top", "10"])
+      ).toThrowError(/Use either --limit-space or --top, not both/);
     });
   });
 });
