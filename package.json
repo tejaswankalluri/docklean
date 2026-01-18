@@ -1,6 +1,6 @@
 {
   "name": "docklean",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "Safely find and clean unused Docker resources",
   "keywords": [
     "docker",
@@ -13,6 +13,15 @@
     "system-maintenance"
   ],
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tejaswankalluri/docklean.git"
+  },
+  "bugs": {
+    "url": "https://github.com/tejaswankalluri/docklean/issues"
+  },
+  "homepage": "https://github.com/tejaswankalluri/docklean#readme",
+  "author": "Tejaswan Kalluri",
   "main": "dist/index.js",
   "bin": {
     "docklean": "bin/docklean.js"
